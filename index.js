@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { load, save } = require('./store');
+const { load, save, db, ensureDemoUser } = require('./store');
 const { errorHandler } = require('./middleware');
 
 const authRoutes = require('./routes/auth');
@@ -19,7 +19,13 @@ function createApp() {
   app.use(express.json());
 
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', storage: process.env.DATABASE_URL ? 'postgres' : 'json', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', storage: process.env.DATABASE_URL ? 'postgres' : 'json', users: Object.keys(db.users).length, timestamp: new Date().toISOString() });
+  });
+
+  app.post('/api/debug/reseed-demo', async (req, res) => {
+    const seeded = ensureDemoUser();
+    await save();
+    res.json({ seeded, users: Object.keys(db.users).length, demoExists: !!Object.values(db.users).find(u => u.email === 'demo@zpay.com') });
   });
 
   app.use('/api/auth', authRoutes);
