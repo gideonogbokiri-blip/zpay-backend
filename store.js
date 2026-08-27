@@ -243,7 +243,6 @@ module.exports = {
   load,
   save,
   resetDb,
-  ensureDemoUser,
   generateId,
   generateUserReference,
   INITIAL_BALANCE,
