@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const DATA_FILE = path.join(__dirname, 'data', 'db.json');
+const DATABASE_URL = process.env.DATABASE_URL || '';
 
 function generateId(prefix) {
   const random = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -99,6 +101,8 @@ function defaultDb() {
 }
 
 let db = defaultDb();
+let pool = null;
+let saveQueue = Promise.resolve();
 
 function ensureDemoUser() {
   const hasUser = Object.values(db.users).some(u => u.email === 'demo@zpay.com');
@@ -148,7 +152,43 @@ function ensureDemoUser() {
   save();
 }
 
-function load() {
+async function initPg() {
+  pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS zpay_db (
+        id INTEGER PRIMARY KEY,
+        data JSONB NOT NULL
+      )
+    `);
+  } finally {
+    client.release();
+  }
+  const result = await pool.query('SELECT data FROM zpay_db WHERE id = 1');
+  if (result.rows.length > 0) {
+    db = result.rows[0].data;
+  } else {
+    db = defaultDb();
+    ensureDemoUser();
+    await persistToPg();
+  }
+}
+
+async function persistToPg() {
+  if (!pool) return;
+  await pool.query('INSERT INTO zpay_db (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data', [JSON.stringify(db)]);
+}
+
+async function load() {
+  if (DATABASE_URL) {
+    try {
+      await initPg();
+      return;
+    } catch (e) {
+      console.error('PostgreSQL init failed, falling back to JSON file:', e.message);
+    }
+  }
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, 'utf8');
@@ -162,7 +202,11 @@ function load() {
   ensureDemoUser();
 }
 
-function save() {
+async function save() {
+  if (pool) {
+    saveQueue = saveQueue.then(() => persistToPg()).catch(e => console.error('Failed to persist to PostgreSQL:', e.message));
+    return;
+  }
   try {
     const dir = path.dirname(DATA_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -172,10 +216,10 @@ function save() {
   }
 }
 
-function resetDb() {
+async function resetDb() {
   Object.keys(db).forEach(k => delete db[k]);
   Object.assign(db, defaultDb());
-  save();
+  await save();
 }
 
 function seedNotifications(userId) {

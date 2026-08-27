@@ -1,7 +1,12 @@
 const { createApp } = require('../index');
+const { load } = require('../store');
 
-const app = createApp();
+let app = null;
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
+  if (!app) {
+    await load();
+    app = createApp();
+  }
   app(req, res);
 };

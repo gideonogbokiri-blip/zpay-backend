@@ -18,8 +18,6 @@ function createApp() {
   app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
   app.use(express.json());
 
-  load();
-
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
@@ -46,15 +44,19 @@ function createApp() {
 module.exports = { createApp };
 
 if (require.main === module) {
-  const app = createApp();
-  const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`ZPAY Backend running on http://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/api/health`);
-  });
-  process.on('SIGINT', () => {
+  (async () => {
+    await load();
+    const app = createApp();
+    const PORT = process.env.PORT || 3001;
+    app.listen(PORT, () => {
+      console.log(`ZPAY Backend running on http://localhost:${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/api/health`);
+      console.log(`Storage: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'JSON file'}`);
+    });
+  })();
+  process.on('SIGINT', async () => {
     console.log('\nShutting down...');
-    save();
+    await save();
     process.exit(0);
   });
 }
