@@ -106,7 +106,7 @@ let saveQueue = Promise.resolve();
 
 function ensureDemoUser() {
   const hasUser = Object.values(db.users).some(u => u.email === 'demo@zpay.com');
-  if (hasUser) return;
+  if (hasUser) return false;
   const user = {
     id: generateUserReference(),
     fullName: 'Demo User',
@@ -150,6 +150,7 @@ function ensureDemoUser() {
     });
   });
   save();
+  return true;
 }
 
 async function initPg() {
@@ -170,7 +171,9 @@ async function initPg() {
     db = result.rows[0].data;
   } else {
     db = defaultDb();
-    ensureDemoUser();
+  }
+  const hadDemo = ensureDemoUser();
+  if (hadDemo) {
     await persistToPg();
   }
 }

@@ -1,3 +1,9 @@
+databases:
+  - name: zpay-db
+    plan: free
+    databaseName: zpay
+    user: zpay
+
 services:
   - type: web
     name: zpay-backend
@@ -13,3 +19,7 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zpay-db
+          property: connectionString
