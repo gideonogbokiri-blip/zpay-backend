@@ -172,9 +172,10 @@ async function initPg() {
   } else {
     db = defaultDb();
   }
-  const hadDemo = ensureDemoUser();
-  if (hadDemo) {
+  const seeded = ensureDemoUser();
+  if (seeded) {
     await persistToPg();
+    console.log('[store] Demo user seeded into PostgreSQL');
   }
 }
 
