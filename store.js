@@ -100,6 +100,54 @@ function defaultDb() {
 
 let db = defaultDb();
 
+function ensureDemoUser() {
+  const hasUser = Object.values(db.users).some(u => u.email === 'demo@zpay.com');
+  if (hasUser) return;
+  const user = {
+    id: generateUserReference(),
+    fullName: 'Demo User',
+    phone: '08012345678',
+    email: 'demo@zpay.com',
+    password: 'password123',
+    pinSet: true,
+    verificationTier: 'tier1',
+    createdAt: new Date().toISOString(),
+  };
+  db.users[user.id] = user;
+  db.wallets[user.id] = { balance: 50000, currency: 'NGN', createdAt: new Date().toISOString() };
+  seedNotifications(user.id);
+  const now = new Date();
+  [
+    { service: 'AIRTIME', serviceName: 'Airtime', amount: 500, fee: 0, providerId: 'mtn', customer: '08098765432' },
+    { service: 'DATA', serviceName: 'Data', amount: 1500, fee: 0, providerId: 'mtn-data', customer: '08098765432' },
+    { service: 'ELECTRICITY', serviceName: 'Electricity', amount: 5000, fee: 100, providerId: 'ekedc', customer: '45678901234' },
+    { service: 'TV', serviceName: 'TV', amount: 6500, fee: 200, providerId: 'dstv', customer: '70123456789' },
+    { service: 'AIRTIME', serviceName: 'Airtime', amount: 1000, fee: 0, providerId: 'airtel', customer: '08011112222', status: 'failed' },
+  ].forEach((t, i) => {
+    const d = new Date(now);
+    d.setHours(d.getHours() - (i * 24 + 6));
+    db.transactions.push({
+      id: generateId('tx'),
+      reference: generateId('ZP'),
+      userId: user.id,
+      service: t.service,
+      serviceName: t.serviceName,
+      amount: t.amount,
+      fee: t.fee,
+      total: t.amount + t.fee,
+      currency: 'NGN',
+      paymentMethod: 'wallet',
+      status: t.status || 'successful',
+      providerReference: (t.status || 'successful') === 'successful' ? generateId('PRV') : null,
+      customerIdentifier: t.customer,
+      metadata: null,
+      createdAt: d.toISOString(),
+      updatedAt: d.toISOString(),
+    });
+  });
+  save();
+}
+
 function load() {
   try {
     if (fs.existsSync(DATA_FILE)) {
@@ -111,6 +159,7 @@ function load() {
   } catch (e) {
     console.error('Failed to load DB, using defaults:', e.message);
   }
+  ensureDemoUser();
 }
 
 function save() {
