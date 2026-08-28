@@ -33,10 +33,10 @@ router.post('/signup', async (req, res, next) => {
     db.verifications[verificationId] = { phone, email, code, userId };
     saveCode(verificationId, phone, code);
 
-    await sendOtp(phone, code);
+    const smsResult = await sendOtp(phone, code);
 
     save();
-    res.json({ verificationId });
+    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: code }) });
   } catch (err) {
     next(err);
   }
@@ -76,9 +76,9 @@ router.post('/resend-otp', async (req, res, next) => {
     }
     pending.code = generateCode();
     saveCode(verificationId, pending.phone, pending.code);
-    await sendOtp(pending.phone, pending.code);
+    const smsResult = await sendOtp(pending.phone, pending.code);
     save();
-    res.json({ verificationId });
+    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: pending.code }) });
   } catch (err) {
     next(err);
   }
