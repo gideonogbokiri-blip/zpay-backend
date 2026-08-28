@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { signToken, authMiddleware, apiError } = require('../middleware');
 const { db, save, generateUserReference, seedNotifications } = require('../store');
+const { generateCode, saveCode } = require('../lib/otp');
+const { sendOtp } = require('../lib/sms');
 
-router.post('/signup', (req, res) => {
+router.post('/signup', async (req, res) => {
   const { fullName, phone, email, password } = req.body;
   if (!fullName || !phone || !email || !password) {
     throw apiError('VALIDATION_ERROR', 'All fields are required.', 'validation', { statusCode: 400 });
@@ -16,7 +18,7 @@ router.post('/signup', (req, res) => {
   }
   const userId = generateUserReference();
   const verificationId = generateUserReference();
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = generateCode();
 
   db.users[userId] = {
     id: userId,
@@ -28,10 +30,9 @@ router.post('/signup', (req, res) => {
     verificationTier: 'unverified',
   };
   db.verifications[verificationId] = { phone, email, code, userId };
+  saveCode(verificationId, phone, code);
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[mock-auth] OTP for ${phone}: ${code}`);
-  }
+  await sendOtp(phone, code);
 
   save();
   res.json({ verificationId });
@@ -62,16 +63,15 @@ router.post('/verify-otp', (req, res) => {
   res.json({ token, user: sanitizeUser(user) });
 });
 
-router.post('/resend-otp', (req, res) => {
+router.post('/resend-otp', async (req, res) => {
   const { verificationId } = req.body;
   const pending = db.verifications[verificationId];
   if (!pending) {
     throw apiError('OTP_EXPIRED', 'This verification session has expired. Please sign up again.', 'validation', { statusCode: 400 });
   }
-  pending.code = String(Math.floor(100000 + Math.random() * 900000));
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[mock-auth] New OTP for ${pending.phone}: ${pending.code}`);
-  }
+  pending.code = generateCode();
+  saveCode(verificationId, pending.phone, pending.code);
+  await sendOtp(pending.phone, pending.code);
   save();
   res.json({ verificationId });
 });
