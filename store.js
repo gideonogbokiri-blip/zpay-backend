@@ -95,6 +95,7 @@ function defaultDb() {
     wallets: {},
     transactions: [],
     notifications: {},
+    chats: {},
     idempotency: {},
     applications: {},
   };
@@ -170,6 +171,7 @@ async function initPg() {
   const loaded = result.rows.length > 0 ? result.rows[0].data : defaultDb();
   Object.keys(db).forEach(k => delete db[k]);
   Object.assign(db, loaded);
+  ensureCollections();
   const seeded = ensureDemoUser();
   if (seeded) {
     await persistToPg();
@@ -201,7 +203,13 @@ async function load() {
   } catch (e) {
     console.error('Failed to load DB, using defaults:', e.message);
   }
+  ensureCollections();
   ensureDemoUser();
+}
+
+function ensureCollections() {
+  if (!db.chats) db.chats = {};
+  if (!db.applications) db.applications = {};
 }
 
 async function save() {

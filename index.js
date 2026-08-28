@@ -10,6 +10,7 @@ const serviceRoutes = require('./routes/services');
 const transactionRoutes = require('./routes/transactions');
 const notificationRoutes = require('./routes/notifications');
 const kycRoutes = require('./routes/kyc');
+const chatRoutes = require('./routes/chat');
 const adminRoutes = require('./routes/admin');
 const adminPage = require('./api/admin-page');
 
@@ -28,6 +29,7 @@ function createApp() {
   app.use('/api/transactions', transactionRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/kyc', kycRoutes);
+  app.use('/api/chat', chatRoutes);
   app.use('/api/admin', adminRoutes);
 
   app.get('/admin', adminPage);

@@ -63,6 +63,27 @@ tr:hover td{background:rgba(0,244,254,.03)}
 .detail-panel .field .val{font-size:15px;margin-top:2px}
 .detail-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:19}
+.chat-layout{display:grid;grid-template-columns:340px 1fr;gap:16px}
+.convo-list{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.convo-item{padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer}
+.convo-item:hover{background:rgba(0,244,254,.04)}
+.convo-item.active{background:rgba(0,244,254,.08)}
+.convo-item .name{font-size:14px;font-weight:600}
+.convo-item .msg{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.convo-item .meta{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+.unread-badge{background:var(--cyan);color:#000;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700}
+.chat-window{background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;min-height:520px}
+.chat-msgs{flex:1;padding:16px;overflow-y:auto;max-height:520px;display:flex;flex-direction:column;gap:10px}
+.msg-bubble{max-width:75%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.4}
+.msg-bubble.role-user{align-self:flex-end;background:var(--cyan);color:#000;border-bottom-right-radius:2px}
+.msg-bubble.role-bot{align-self:flex-start;background:var(--surface2);border-bottom-left-radius:2px}
+.msg-bubble.role-admin{align-self:flex-start;background:rgba(52,211,153,.18);border-bottom-left-radius:2px;border:1px solid rgba(52,211,153,.3)}
+.msg-time{display:block;font-size:10px;color:var(--muted);margin-top:4px;text-align:right}
+.chat-input{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+.chat-input textarea{flex:1;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;resize:none;outline:none;min-height:44px}
+.chat-input textarea:focus{border-color:var(--cyan)}
+.chat-input .btn{width:auto;padding:0 20px;margin-top:0}
+.chat-placeholder{display:flex;align-items:center;justify-content:center;height:50%;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -97,11 +118,13 @@ tr:hover td{background:rgba(0,244,254,.03)}
     <div class="tab" data-tab="users">Users</div>
     <div class="tab" data-tab="transactions">Transactions</div>
     <div class="tab" data-tab="wallets">Wallets</div>
+    <div class="tab" data-tab="chat">Inbox</div>
   </div>
   <div id="overviewTab" class="content"></div>
   <div id="usersTab" class="content hidden"></div>
   <div id="transactionsTab" class="content hidden"></div>
   <div id="walletsTab" class="content hidden"></div>
+  <div id="chatTab" class="content hidden"></div>
 </div>
 
 <div id="detailOverlay" class="overlay hidden" onclick="closeDetail()"></div>
@@ -155,7 +178,7 @@ async function loadTab(tab){
   const el = document.getElementById(tab+'Tab');
   el.innerHTML = '<p><span class="spinner"></span> Loading...</p>';
   el.classList.remove('hidden');
-  ['overview','users','transactions','wallets'].forEach(t=>{
+  ['overview','users','transactions','wallets','chat'].forEach(t=>{
     if(t!==tab) document.getElementById(t+'Tab').classList.add('hidden');
   });
   try{
@@ -163,6 +186,7 @@ async function loadTab(tab){
     else if(tab==='users') await loadUsers(el);
     else if(tab==='transactions') await loadTransactions(el);
     else if(tab==='wallets') await loadWallets(el);
+    else if(tab==='chat') await loadChat(el);
   }catch(e){el.innerHTML='<p class="empty">Error: '+e.message+'</p>'}
 }
 
@@ -262,6 +286,68 @@ async function loadWallets(el){
 let _debounceTimer;
 function debounce(fn){ clearTimeout(_debounceTimer); _debounceTimer=setTimeout(fn,300); }
 
+let _activeChatUser = null;
+let _chatRefresh = null;
+
+async function loadChat(el){
+  const convos = await api('/api/chat/admin/conversations');
+  const totalUnread = convos.items.reduce((s,c)=>s+c.unreadAdmin,0);
+  const listHtml = convos.items.map(c=>`
+    <div class="convo-item ${_activeChatUser===c.userId?'active':''}" onclick="openChat('${c.userId}')">
+      <div class="name">${c.userName} ${c.unreadAdmin>0?'<span class="unread-badge">'+c.unreadAdmin+'</span>':''}</div>
+      <div class="msg">${c.lastMessage}</div>
+      <div class="meta"><span>${c.lastRole}</span><span>${new Date(c.lastAt).toLocaleString()}</span></div>
+    </div>`).join('') || '<div class="empty">No conversations yet</div>';
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat"><div class="label">Conversations</div><div class="value cyan">${convos.items.length}</div></div>
+      <div class="stat"><div class="label">Unread</div><div class="value ${totalUnread>0?'yellow':'green'}">${totalUnread}</div></div>
+    </div>
+    <div class="chat-layout">
+      <div class="convo-list">${listHtml}</div>
+      <div class="chat-window" id="chatWindow">
+        ${_activeChatUser ? '' : '<div class="chat-placeholder">Select a conversation to view messages</div>'}
+      </div>
+    </div>`;
+  if(_activeChatUser) await renderChatWindow(_activeChatUser);
+  if(_chatRefresh) clearInterval(_chatRefresh);
+  _chatRefresh = setInterval(()=>{ if(currentTab==='chat') loadChat(document.getElementById('chatTab')); }, 15000);
+}
+
+async function openChat(userId){
+  _activeChatUser = userId;
+  loadChat(document.getElementById('chatTab'));
+}
+
+async function renderChatWindow(userId){
+  const c = await api('/api/chat/admin/conversations/'+userId);
+  const msgs = c.messages.map(m=>`
+    <div class="msg-bubble role-${m.role}">${m.role==='admin'?'<b style="font-size:11px;color:var(--green)">ADMIN</b> ':''}${m.text}<span class="msg-time">${new Date(m.createdAt).toLocaleString()}</span></div>`).join('');
+  const win = document.getElementById('chatWindow');
+  win.innerHTML = `
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+      <b>${c.userName}</b> <span style="color:var(--muted);font-size:13px">· ${c.email}</span>
+    </div>
+    <div class="chat-msgs" id="chatMsgs">${msgs||'<div class="empty">No messages</div>'}</div>
+    <div class="chat-input">
+      <textarea id="chatReply" rows="1" placeholder="Type a reply..."></textarea>
+      <button class="btn" onclick="sendAdminReply()">Send</button>
+    </div>`;
+  const box = document.getElementById('chatMsgs');
+  box.scrollTop = box.scrollHeight;
+  const ta = document.getElementById('chatReply');
+  ta.focus();
+  ta.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendAdminReply(); } });
+}
+
+async function sendAdminReply(){
+  const ta = document.getElementById('chatReply');
+  const text = (ta.value||'').trim();
+  if(!text || !_activeChatUser) return;
+  await api('/api/chat/admin/conversations/'+_activeChatUser+'/reply', { method:'POST', body:JSON.stringify({ text }) });
+  ta.value='';
+  renderChatWindow(_activeChatUser);
+}
 document.getElementById('userSearch')?.addEventListener('input',()=>debounce(()=>loadUsers(document.getElementById('usersTab'))));
 </script>
 </body>
