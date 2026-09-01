@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'zpay-dev-secret-2024';
+if (!process.env.JWT_SECRET) {
+  console.warn('[SECURITY] JWT_SECRET not set — using fallback. Set JWT_SECRET env var in production.');
+}
 
 function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });

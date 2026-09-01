@@ -8,6 +8,16 @@ router.get('/', authMiddleware, (req, res) => {
   res.json(list);
 });
 
+router.put('/read-all', authMiddleware, (req, res) => {
+  const list = db.notifications[req.userId] || [];
+  const now = new Date().toISOString();
+  for (const n of list) {
+    n.readAt = n.readAt || now;
+  }
+  save();
+  res.json({ success: true });
+});
+
 router.put('/:id/read', authMiddleware, (req, res) => {
   const list = db.notifications[req.userId] || [];
   const notification = list.find((n) => n.id === req.params.id);
@@ -17,16 +27,6 @@ router.put('/:id/read', authMiddleware, (req, res) => {
   notification.readAt = notification.readAt || new Date().toISOString();
   save();
   res.json(notification);
-});
-
-router.put('/read-all', authMiddleware, (req, res) => {
-  const list = db.notifications[req.userId] || [];
-  const now = new Date().toISOString();
-  for (const n of list) {
-    n.readAt = n.readAt || now;
-  }
-  save();
-  res.json({ success: true });
 });
 
 module.exports = router;
