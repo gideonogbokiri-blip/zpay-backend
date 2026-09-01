@@ -148,6 +148,17 @@ router.get('/me', authMiddleware, (req, res) => {
   res.json(sanitizeUser(user));
 });
 
+router.post('/avatar', authMiddleware, (req, res) => {
+  const user = requireUser(req);
+  const { avatarUrl } = req.body;
+  if (!avatarUrl || typeof avatarUrl !== 'string') {
+    throw apiError('VALIDATION_ERROR', 'Avatar URL is required.', 'validation', { statusCode: 400 });
+  }
+  db.users[user.id].avatarUrl = avatarUrl;
+  save();
+  res.json({ user: sanitizeUser(db.users[user.id]) });
+});
+
 function sanitizeUser(user) {
   const { password, ...safe } = user;
   return safe;
