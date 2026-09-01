@@ -5,6 +5,31 @@ const { db, save, generateUserReference, seedNotifications } = require('../store
 const { generateCode, saveCode } = require('../lib/otp');
 const { sendOtp } = require('../lib/sms');
 
+router.post('/request-otp', async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      throw apiError('VALIDATION_ERROR', 'Phone number is required.', 'validation', { statusCode: 400 });
+    }
+    const record = Object.values(db.users).find((u) => u.phone === phone);
+    if (!record) {
+      throw apiError('ACCOUNT_NOT_FOUND', 'No account found with this phone number. Please sign up first.', 'validation', { statusCode: 404 });
+    }
+    const verificationId = generateUserReference();
+    const code = generateCode();
+
+    db.verifications[verificationId] = { phone, email: record.email, code, userId: record.id };
+    saveCode(verificationId, phone, code);
+
+    const smsResult = await sendOtp(phone, code);
+
+    save();
+    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: code }) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/signup', async (req, res, next) => {
   try {
     const { fullName, phone, email, password } = req.body;

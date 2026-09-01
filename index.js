@@ -18,7 +18,7 @@ function createApp() {
   const app = express();
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
-    : ['https://zpay-frontend-nine.vercel.app', 'https://zpay-frontend.vercel.app', 'http://localhost:8081', 'http://localhost:19006'];
+    : ['https://zpay-frontend-nine.vercel.app', 'https://zpay.vercel.app', 'https://zpay-frontend.vercel.app', 'http://localhost:8081', 'http://localhost:19006'];
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
 
