@@ -17,9 +17,19 @@ const adminPage = require('./api/admin-page');
 function createApp() {
   const app = express();
   const allowedOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',')
-    : ['https://zpay-frontend-nine.vercel.app', 'https://zpay.vercel.app', 'https://zpay-frontend.vercel.app', 'http://localhost:8081', 'http://localhost:19006'];
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : ['https://zpay-seven.vercel.app', 'https://zpay-frontend-nine.vercel.app', 'https://zpay.vercel.app', 'https://zpay-frontend.vercel.app', 'http://localhost:8081', 'http://localhost:19006'];
+  const corsOptions = {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+  };
+  app.use(cors(corsOptions));
   app.use(express.json());
 
   app.get('/api/health', (req, res) => {
