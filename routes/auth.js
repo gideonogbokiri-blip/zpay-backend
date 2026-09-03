@@ -32,7 +32,7 @@ router.post('/request-otp', async (req, res, next) => {
 
 router.post('/signup', async (req, res, next) => {
   try {
-    const { fullName, phone, email, password } = req.body;
+    const { fullName, phone, email, password, referralCode } = req.body;
     if (!fullName || !phone || !email || !password) {
       throw apiError('VALIDATION_ERROR', 'All fields are required.', 'validation', { statusCode: 400 });
     }
@@ -46,6 +46,14 @@ router.post('/signup', async (req, res, next) => {
     const verificationId = generateUserReference();
     const code = generateCode();
 
+    let referredBy = null;
+    if (referralCode && String(referralCode).trim()) {
+      const referrer = Object.values(db.users).find(
+        (u) => u.referralCode && u.referralCode.toUpperCase() === String(referralCode).trim().toUpperCase()
+      );
+      if (referrer) referredBy = referrer.id;
+    }
+
     db.users[userId] = {
       id: userId,
       fullName,
@@ -54,6 +62,8 @@ router.post('/signup', async (req, res, next) => {
       password,
       pinSet: false,
       verificationTier: 'unverified',
+      referralCode: generateUserReference(),
+      referredBy,
     };
     db.verifications[verificationId] = { phone, email, code, userId };
     saveCode(verificationId, phone, code);
@@ -160,6 +170,7 @@ router.post('/avatar', authMiddleware, (req, res) => {
 });
 
 function sanitizeUser(user) {
+  if (user && !user.referralCode) user.referralCode = generateUserReference();
   const { password, ...safe } = user;
   return safe;
 }

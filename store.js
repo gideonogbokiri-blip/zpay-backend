@@ -116,6 +116,7 @@ function ensureDemoUser() {
     password: 'password123',
     pinSet: true,
     verificationTier: 'tier1',
+    referralCode: generateUserReference(),
     createdAt: new Date().toISOString(),
   };
   db.users[user.id] = user;
