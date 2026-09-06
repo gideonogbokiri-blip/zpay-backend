@@ -119,6 +119,37 @@ router.post('/resend-otp', async (req, res, next) => {
   }
 });
 
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { verificationId, code, newPassword } = req.body;
+    if (!verificationId || !code || !newPassword) {
+      throw apiError('VALIDATION_ERROR', 'All fields are required.', 'validation', { statusCode: 400 });
+    }
+    if (String(newPassword).length < 8) {
+      throw apiError('VALIDATION_ERROR', 'Password must be at least 8 characters.', 'validation', { statusCode: 400 });
+    }
+    const pending = db.verifications[verificationId];
+    if (!pending) {
+      throw apiError('OTP_EXPIRED', 'This verification code has expired. Request a new one.', 'validation', { statusCode: 400 });
+    }
+    if (code !== pending.code) {
+      throw apiError('OTP_INVALID', 'The code you entered is incorrect. Try again.', 'validation', { retryable: true, statusCode: 400 });
+    }
+    const user = db.users[pending.userId];
+    delete db.verifications[verificationId];
+    if (!user) {
+      throw apiError('ACCOUNT_NOT_FOUND', 'Account not found. Please try again.', 'validation', { statusCode: 404 });
+    }
+    user.password = newPassword;
+    user.pinSet = user.pinSet ?? false;
+    const token = signToken({ userId: user.id });
+    save();
+    res.json({ token, user: sanitizeUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/login', (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || !password) {
@@ -148,6 +179,7 @@ router.post('/create-pin', authMiddleware, (req, res) => {
   if (!pin || !/^\d{4}$/.test(pin)) {
     throw apiError('PIN_INVALID', 'Enter a valid 4-digit PIN.', 'validation', { statusCode: 400 });
   }
+  db.users[user.id].pin = String(pin);
   db.users[user.id].pinSet = true;
   save();
   res.json({ user: sanitizeUser(db.users[user.id]) });
@@ -165,6 +197,39 @@ router.post('/avatar', authMiddleware, (req, res) => {
     throw apiError('VALIDATION_ERROR', 'Avatar URL is required.', 'validation', { statusCode: 400 });
   }
   db.users[user.id].avatarUrl = avatarUrl;
+  save();
+  res.json({ user: sanitizeUser(db.users[user.id]) });
+});
+
+router.post('/change-password', authMiddleware, (req, res) => {
+  const user = requireUser(req);
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    throw apiError('VALIDATION_ERROR', 'All fields are required.', 'validation', { statusCode: 400 });
+  }
+  if (String(newPassword).length < 8) {
+    throw apiError('VALIDATION_ERROR', 'Password must be at least 8 characters.', 'validation', { statusCode: 400 });
+  }
+  if (db.users[user.id].password !== currentPassword) {
+    throw apiError('INVALID_CREDENTIALS', 'Current password is incorrect.', 'authentication', { retryable: true, statusCode: 400 });
+  }
+  db.users[user.id].password = newPassword;
+  save();
+  res.json({ user: sanitizeUser(db.users[user.id]) });
+});
+
+router.post('/change-pin', authMiddleware, (req, res) => {
+  const user = requireUser(req);
+  const { currentPin, newPin } = req.body;
+  if (!newPin || !/^\d{4}$/.test(String(newPin))) {
+    throw apiError('PIN_INVALID', 'Enter a valid 4-digit PIN.', 'validation', { statusCode: 400 });
+  }
+  const pinSet = db.users[user.id].pinSet;
+  if (pinSet && db.users[user.id].pin !== currentPin) {
+    throw apiError('PIN_INVALID', 'Current PIN is incorrect.', 'validation', { retryable: true, statusCode: 400 });
+  }
+  db.users[user.id].pin = String(newPin);
+  db.users[user.id].pinSet = true;
   save();
   res.json({ user: sanitizeUser(db.users[user.id]) });
 });
