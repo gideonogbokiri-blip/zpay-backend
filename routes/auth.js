@@ -4,6 +4,7 @@ const { signToken, authMiddleware, apiError } = require('../middleware');
 const { db, save, generateUserReference, seedNotifications } = require('../store');
 const { generateCode, saveCode } = require('../lib/otp');
 const { sendOtp } = require('../lib/sms');
+const { sendOtpEmail } = require('../lib/email');
 
 router.post('/request-otp', async (req, res, next) => {
   try {
@@ -18,13 +19,15 @@ router.post('/request-otp', async (req, res, next) => {
     const verificationId = generateUserReference();
     const code = generateCode();
 
-    db.verifications[verificationId] = { phone, email: record.email, code, userId: record.id };
+    db.verifications[verificationId] = { phone, email: record.email, code, userId: record.id, fullName: record.fullName };
     saveCode(verificationId, phone, code);
 
     const smsResult = await sendOtp(phone, code);
+    const emailResult = await sendOtpEmail({ email: record.email, fullName: record.fullName, otp: code });
+    const delivered = smsResult.delivered || emailResult.delivered;
 
     save();
-    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: code }) });
+    res.json({ verificationId, ...(delivered ? {} : { otp: code }) });
   } catch (err) {
     next(err);
   }
@@ -65,13 +68,15 @@ router.post('/signup', async (req, res, next) => {
       referralCode: generateUserReference(),
       referredBy,
     };
-    db.verifications[verificationId] = { phone, email, code, userId };
+    db.verifications[verificationId] = { phone, email, code, userId, fullName };
     saveCode(verificationId, phone, code);
 
     const smsResult = await sendOtp(phone, code);
+    const emailResult = await sendOtpEmail({ email, fullName, otp: code });
+    const delivered = smsResult.delivered || emailResult.delivered;
 
     save();
-    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: code }) });
+    res.json({ verificationId, ...(delivered ? {} : { otp: code }) });
   } catch (err) {
     next(err);
   }
@@ -112,8 +117,10 @@ router.post('/resend-otp', async (req, res, next) => {
     pending.code = generateCode();
     saveCode(verificationId, pending.phone, pending.code);
     const smsResult = await sendOtp(pending.phone, pending.code);
+    const emailResult = await sendOtpEmail({ email: pending.email, fullName: pending.fullName, otp: pending.code });
+    const delivered = smsResult.delivered || emailResult.delivered;
     save();
-    res.json({ verificationId, ...(smsResult.delivered ? {} : { otp: pending.code }) });
+    res.json({ verificationId, ...(delivered ? {} : { otp: pending.code }) });
   } catch (err) {
     next(err);
   }
