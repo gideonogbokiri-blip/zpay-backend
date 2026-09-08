@@ -4,6 +4,7 @@ const { authMiddleware, apiError } = require('../middleware');
 const {
   db, save, generateId, SERVICE_NAMES, PROVIDERS,
 } = require('../store');
+const { requireVendor } = require('../lib/vendor');
 
 function providerFee(providerId) {
   const provider = PROVIDERS.find((p) => p.id === providerId);
@@ -45,6 +46,8 @@ router.post('/pay', authMiddleware, (req, res) => {
   }
 
   const { service, providerId, customerIdentifier, amount, pin, idempotencyKey, metadata } = req.body;
+
+  requireVendor();
 
   if (idempotencyKey) {
     const key = `${req.userId}:${idempotencyKey}`;
@@ -136,6 +139,8 @@ router.post('/register', authMiddleware, (req, res) => {
   }
 
   const { service, pin, idempotencyKey, amount, payload, metadata } = req.body;
+
+  requireVendor();
 
   if (idempotencyKey) {
     const key = `${req.userId}:${idempotencyKey}`;

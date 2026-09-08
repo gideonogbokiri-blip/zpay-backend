@@ -30,6 +30,22 @@ function createApp() {
     credentials: true,
   };
   app.use(cors(corsOptions));
+
+  app.use(
+    '/api/webhooks',
+    express.raw({ type: function () { return true; }, limit: '10mb' }),
+    (req, res, next) => {
+      req.rawBody = req.body ? req.body.toString('utf8') : '';
+      try {
+        req.body = req.body && req.body.length ? JSON.parse(req.body.toString('utf8')) : {};
+      } catch (e) {
+        return res.status(400).json({ status: 'bad request' });
+      }
+      next();
+    },
+    require('./routes/webhooks')
+  );
+
   app.use(express.json());
 
   app.get('/api/health', (req, res) => {

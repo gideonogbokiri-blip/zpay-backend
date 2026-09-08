@@ -31,6 +31,14 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: "ZPAY <zpaycontact@gmail.com>"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_WEBHOOK_URL
+        value: "https://zpay-backend.onrender.com/api/webhooks/paystack"
+      - key: SERVICES_VENDOR_API_KEY
+        sync: false
+      - key: SERVICES_DEMO_ENABLED
+        value: "false"
       - key: DATABASE_URL
         fromDatabase:
           name: zpay-db

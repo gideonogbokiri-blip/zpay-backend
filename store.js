@@ -98,6 +98,7 @@ function defaultDb() {
     chats: {},
     idempotency: {},
     applications: {},
+    fundPayments: {},
   };
 }
 
@@ -246,6 +247,7 @@ async function load() {
 function ensureCollections() {
   if (!db.chats) db.chats = {};
   if (!db.applications) db.applications = {};
+  if (!db.fundPayments) db.fundPayments = {};
 }
 
 async function save() {
