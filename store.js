@@ -15,7 +15,7 @@ function generateUserReference() {
   return `usr_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 }
 
-const INITIAL_BALANCE = 25000;
+const INITIAL_BALANCE = 0;
 
 const SERVICES = [
   { type: 'ELECTRICITY', name: 'Electricity', order: 1 },
@@ -106,6 +106,7 @@ let pool = null;
 let saveQueue = Promise.resolve();
 
 function ensureDemoUser() {
+  if (process.env.NODE_ENV === 'production') return false;
   const hasUser = Object.values(db.users).some(u => u.email === 'demo@zpay.com');
   if (hasUser) return false;
   const user = {
@@ -155,6 +156,38 @@ function ensureDemoUser() {
   return true;
 }
 
+function cleanupProductionData() {
+  if (process.env.NODE_ENV !== 'production') return;
+  const demoEmails = ['demo@zpay.com'];
+  let cleaned = false;
+  Object.values(db.users).forEach(u => {
+    if (demoEmails.includes(u.email)) {
+      delete db.users[u.id];
+      delete db.wallets[u.id];
+      delete db.notifications[u.id];
+      delete db.chats[u.id];
+      cleaned = true;
+    }
+  });
+  if (cleaned) {
+    db.transactions = db.transactions.filter(t => {
+      const user = db.users[t.userId];
+      return user && !demoEmails.includes(user.email);
+    });
+  }
+  Object.keys(db.wallets).forEach(userId => {
+    const hasFunding = (db.transactions || []).some(t => t.userId === userId && t.service === 'WALLET' && t.status === 'successful');
+    if (!hasFunding && db.wallets[userId] && db.wallets[userId].balance > 0) {
+      db.wallets[userId].balance = 0;
+      cleaned = true;
+    }
+  });
+  if (cleaned) {
+    console.log('[store] Cleaned up demo data and free balances from production database');
+    save();
+  }
+}
+
 async function initPg() {
   pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
   const client = await pool.connect();
@@ -189,6 +222,7 @@ async function load() {
   if (DATABASE_URL) {
     try {
       await initPg();
+      cleanupProductionData();
       return;
     } catch (e) {
       console.error('PostgreSQL init failed, falling back to JSON file:', e.message);
@@ -206,6 +240,7 @@ async function load() {
   }
   ensureCollections();
   ensureDemoUser();
+  cleanupProductionData();
 }
 
 function ensureCollections() {

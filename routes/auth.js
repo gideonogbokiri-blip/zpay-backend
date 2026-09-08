@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { signToken, authMiddleware, apiError } = require('../middleware');
-const { db, save, generateUserReference, seedNotifications } = require('../store');
+const { db, save, generateUserReference, seedNotifications, INITIAL_BALANCE } = require('../store');
 const { generateCode, saveCode } = require('../lib/otp');
 const { sendOtp } = require('../lib/sms');
 const { sendOtpEmail } = require('../lib/email');
@@ -98,7 +98,7 @@ router.post('/verify-otp', (req, res) => {
   }
 
   if (!db.wallets[user.id]) {
-    db.wallets[user.id] = { balance: 25000, currency: 'NGN' };
+    db.wallets[user.id] = { balance: INITIAL_BALANCE, currency: 'NGN' };
     seedNotifications(user.id);
   }
 
@@ -171,7 +171,7 @@ router.post('/login', (req, res) => {
   }
 
   if (!db.wallets[record.id]) {
-    db.wallets[record.id] = { balance: 25000, currency: 'NGN' };
+    db.wallets[record.id] = { balance: INITIAL_BALANCE, currency: 'NGN' };
     seedNotifications(record.id);
   }
 
