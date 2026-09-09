@@ -37,6 +37,14 @@ services:
         value: "https://zpay-backend.onrender.com/api/webhooks/paystack"
       - key: SERVICES_VENDOR_API_KEY
         sync: false
+      - key: VTPASS_BASE_URL
+        value: "https://vtpass.com/api"
+      - key: VTPASS_API_KEY
+        sync: false
+      - key: VTPASS_PUBLIC_KEY
+        sync: false
+      - key: VTPASS_SECRET_KEY
+        sync: false
       - key: SERVICES_DEMO_ENABLED
         value: "false"
       - key: DATABASE_URL
