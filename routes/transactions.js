@@ -219,8 +219,8 @@ router.post('/pay', authMiddleware, async (req, res, next) => {
     if (!user) {
       throw apiError('UNAUTHENTICATED', 'Your session has expired. Please log in again.', 'authentication', { statusCode: 401 });
     }
-    if (!user.pinSet || !/^\d{4}$/.test(req.body.pin)) {
-      throw apiError('PIN_INVALID', 'Enter your 4-digit transaction PIN.', 'validation', { statusCode: 400 });
+    if (!user.pinSet || !/^\d{4}$/.test(String(req.body.pin || '')) || user.pin !== String(req.body.pin)) {
+      throw apiError('PIN_INVALID', 'Enter your correct 4-digit transaction PIN.', 'validation', { statusCode: 400 });
     }
 
     const { service, providerId, customerIdentifier, amount, variationCode, pin, idempotencyKey, metadata } = req.body;
@@ -349,8 +349,8 @@ router.post('/register', authMiddleware, async (req, res, next) => {
     if (!user) {
       throw apiError('UNAUTHENTICATED', 'Your session has expired. Please log in again.', 'authentication', { statusCode: 401 });
     }
-    if (!user.pinSet || !/^\d{4}$/.test(req.body.pin)) {
-      throw apiError('PIN_INVALID', 'Enter your 4-digit transaction PIN.', 'validation', { statusCode: 400 });
+    if (!user.pinSet || !/^\d{4}$/.test(String(req.body.pin || '')) || user.pin !== String(req.body.pin)) {
+      throw apiError('PIN_INVALID', 'Enter your correct 4-digit transaction PIN.', 'validation', { statusCode: 400 });
     }
 
     const { service, pin, idempotencyKey, payload, metadata } = req.body;

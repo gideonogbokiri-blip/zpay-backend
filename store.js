@@ -115,14 +115,21 @@ let saveQueue = Promise.resolve();
 
 function ensureDemoUser() {
   if (process.env.NODE_ENV === 'production') return false;
-  const hasUser = Object.values(db.users).some(u => u.email === 'demo@zpay.com');
-  if (hasUser) return false;
+  const existing = Object.values(db.users).find(u => u.email === 'demo@zpay.com');
+  if (existing) {
+    let changed = false;
+    if (!existing.pinSet) { existing.pinSet = true; existing.pin = '1234'; changed = true; }
+    if (!existing.pin) { existing.pin = '1234'; changed = true; }
+    if (changed) { save(); }
+    return false;
+  }
   const user = {
     id: generateUserReference(),
     fullName: 'Demo User',
     phone: '08012345678',
     email: 'demo@zpay.com',
     password: 'password123',
+    pin: '1234',
     pinSet: true,
     verificationTier: 'tier1',
     referralCode: generateUserReference(),

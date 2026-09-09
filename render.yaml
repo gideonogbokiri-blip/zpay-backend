@@ -38,7 +38,7 @@ services:
       - key: SERVICES_VENDOR_API_KEY
         sync: false
       - key: VTPASS_BASE_URL
-        value: "https://vtpass.com/api"
+        value: "https://sandbox.vtpass.com/api"
       - key: VTPASS_API_KEY
         sync: false
       - key: VTPASS_PUBLIC_KEY
