@@ -1,6 +1,7 @@
 const express = require('express');
 const { db, save, generateId, seedNotifications } = require('../store');
 const { verifyWebhook } = require('../lib/paystack');
+const { handleVtpassWebhook } = require('./transactions');
 
 const router = express.Router();
 
@@ -78,6 +79,21 @@ router.post('/paystack', (req, res) => {
   }
 
   res.json({ status: 'received' });
+});
+
+router.post('/vtpass', (req, res) => {
+  // Acknowledge promptly per VTpass spec before any processing.
+  res.json({ response: 'success' });
+  try {
+    const notification = req.body || {};
+    if (Array.isArray(notification)) {
+      notification.forEach(handleVtpassWebhook);
+    } else {
+      handleVtpassWebhook(notification);
+    }
+  } catch (e) {
+    console.error('VTpass webhook handling error:', e);
+  }
 });
 
 module.exports = router;

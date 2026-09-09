@@ -87,6 +87,48 @@ function applyFailed(tx) {
   save();
 }
 
+function applyReversed(tx, result) {
+  const wasDebited = tx.status === 'successful';
+  const wallet = db.wallets[tx.userId];
+  if (wasDebited && wallet) wallet.balance = (wallet.balance || 0) + tx.total;
+  tx.status = 'reversed';
+  tx.updatedAt = new Date().toISOString();
+  tx.metadata = {
+    ...(tx.metadata || {}),
+    vendor: {
+      ...(tx.metadata && tx.metadata.vendor),
+      reversal: true,
+      reversalRequestId: (result && result.requestId) || null,
+    },
+  };
+  const note = wasDebited ? ' was reversed and the funds returned to your wallet.' : ' was reversed. No funds were charged.';
+  notify(tx.userId, 'payment', 'Payment reversed', `Your ${SERVICE_NAMES[tx.service]} payment of NGN ${tx.total}${note}`);
+  save();
+}
+
+function handleVtpassWebhook(notification) {
+  const data = (notification && notification.data) || {};
+  if (!notification || notification.type !== 'transaction-update' || !data.requestId) return false;
+  const tx = db.transactions.find((t) => t.vendorRequestId === data.requestId);
+  if (!tx) return false;
+  const inner = data.content && data.content.transactions;
+  const status = inner && inner.status;
+  if (status === 'reversed') {
+    applyReversed(tx, data);
+    return true;
+  }
+  if (tx.status !== 'pending') return false;
+  if (status === 'delivered') {
+    applyDelivered(tx, data);
+    return true;
+  }
+  if (classifyVtpass(data) === 'failed') {
+    applyFailed(tx);
+    return true;
+  }
+  return false;
+}
+
 function scheduleRequery(txId, attempt) {
   if (attempt >= PENDING_RETRY_MS.length || requerying.has(txId)) return;
   requerying.add(txId);
@@ -527,3 +569,4 @@ router.post('/register', authMiddleware, async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.handleVtpassWebhook = handleVtpassWebhook;
