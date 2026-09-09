@@ -91,9 +91,20 @@ function applyDelivered(tx, result) {
   save();
 }
 
-function applyFailed(tx) {
+function applyFailed(tx, result) {
+  const code = (result && (result.code || result.statusCode)) || (tx && tx.metadata && tx.metadata.vendor && tx.metadata.vendor.code);
+  const message =
+    (result && (result.response_description || result.message || result.description)) ||
+    (result && result.code === '016' ? 'The service provider rejected this request (check the number or plan).' : null);
   tx.status = 'failed';
   tx.updatedAt = new Date().toISOString();
+  tx.metadata = {
+    ...(tx.metadata || {}),
+    vendor: {
+      ...(tx.metadata ? tx.metadata.vendor : null),
+      ...(code ? { code, reason: message || `CODE_${code}` } : {}),
+    },
+  };
   notify(tx.userId, 'payment', 'Payment failed', `Your ${SERVICE_NAMES[tx.service]} payment could not be completed. No funds were charged.`);
   save();
 }
@@ -134,7 +145,7 @@ function handleVtpassWebhook(notification) {
     return true;
   }
   if (classifyVtpass(data) === 'failed') {
-    applyFailed(tx);
+    applyFailed(tx, data);
     return true;
   }
   return false;
@@ -152,7 +163,7 @@ function scheduleRequery(txId, attempt) {
       if (outcome === 'delivered') {
         applyDelivered(tx, result);
       } else if (outcome === 'failed') {
-        applyFailed(tx);
+        applyFailed(tx, result);
       } else {
         scheduleRequery(txId, attempt + 1);
       }
@@ -169,7 +180,7 @@ function handleVendorError(tx, err) {
   const ambiguous = ['000', '001', '020', '099', '089', 'VENDOR_UNREACHABLE'];
   const definiteFail = code && /^\d{3}$/.test(code) && !ambiguous.includes(code) && !err.retryable;
   if (definiteFail) {
-    applyFailed(tx);
+    applyFailed(tx, { code, response_description: err.message });
     return;
   }
   tx.status = 'pending';
@@ -236,7 +247,7 @@ async function runVendorPurchase(tx, args, service) {
     save();
     scheduleRequery(tx.id, 0);
   } else {
-    applyFailed(tx);
+    applyFailed(tx, result);
   }
 }
 
@@ -556,7 +567,7 @@ router.post('/register', authMiddleware, async (req, res, next) => {
         save();
         scheduleRequery(transaction.id, 0);
       } else {
-        applyFailed(transaction);
+        applyFailed(transaction, result);
       }
     } catch (err) {
       handleVendorError(transaction, err);
