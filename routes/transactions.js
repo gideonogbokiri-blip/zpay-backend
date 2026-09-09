@@ -46,17 +46,28 @@ function notify(userId, type, title, message) {
   });
 }
 
-function pickPurchasedCode(t, content) {
-  if (!t) return null;
-  const candidates = [t.purchased_code, t.pin, content && (content.Pin || content.pin), content && content.token];
+function pickPurchasedCode(result) {
+  const content = result && result.content;
+  const t = content && content.transactions;
+  const candidates = [
+    result && (result.purchased_code || result.token || result.pin),
+    t && (t.purchased_code || t.pin),
+    content && (content.Pin || content.pin || content.token),
+  ];
   for (const c of candidates) {
     if (typeof c === 'string' && c.trim()) return c.trim();
   }
-  if (Array.isArray(t.tokens) && t.tokens.length) {
-    return t.tokens.map((x) => (typeof x === 'object' ? x.Pin || x.pin || x.name || '' : x)).filter(Boolean).join(', ');
-  }
-  if (Array.isArray(t.cards) && t.cards.length) {
-    return t.cards.map((c) => c.Pin || c.pin || c.SN || c.serial || '').filter(Boolean).join(', ');
+  const tokenArrays = [];
+  if (t && Array.isArray(t.tokens)) tokenArrays.push(t.tokens);
+  if (t && Array.isArray(t.cards)) tokenArrays.push(t.cards);
+  if (content && Array.isArray(content.tokens)) tokenArrays.push(content.tokens);
+  if (content && Array.isArray(content.cards)) tokenArrays.push(content.cards);
+  for (const arr of tokenArrays) {
+    const joined = arr
+      .map((x) => (typeof x === 'object' ? x.Pin || x.pin || x.Token || x.token || x.SN || x.serial || x.name || '' : x))
+      .filter(Boolean)
+      .join(', ');
+    if (joined) return joined;
   }
   return null;
 }
@@ -67,7 +78,7 @@ function applyDelivered(tx, result) {
   if (wallet) wallet.balance = Math.max(0, (wallet.balance || 0) - tx.total);
   tx.status = 'successful';
   tx.providerReference = (t && (t.transactionId || t.reference || t.requestId)) || tx.vendorRequestId || generateId('PRV');
-  tx.purchasedCode = pickPurchasedCode(t, result.content);
+  tx.purchasedCode = pickPurchasedCode(result);
   tx.updatedAt = new Date().toISOString();
   tx.metadata = {
     ...(tx.metadata || {}),
