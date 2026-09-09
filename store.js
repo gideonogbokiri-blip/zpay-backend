@@ -38,10 +38,17 @@ const SERVICE_NAMES = {
 };
 
 const PROVIDERS = [
-  { id: 'ekedc', service: 'ELECTRICITY', name: 'EKEDC', fee: 100 },
-  { id: 'ikedc', service: 'ELECTRICITY', name: 'IKEDC', fee: 100 },
-  { id: 'phedc', service: 'ELECTRICITY', name: 'PHEDC', fee: 100 },
   { id: 'aedc', service: 'ELECTRICITY', name: 'AEDC', fee: 100 },
+  { id: 'bedc', service: 'ELECTRICITY', name: 'BEDC', fee: 100 },
+  { id: 'eedc', service: 'ELECTRICITY', name: 'EEDC', fee: 100 },
+  { id: 'ekedc', service: 'ELECTRICITY', name: 'EKEDC', fee: 100 },
+  { id: 'ibedc', service: 'ELECTRICITY', name: 'IBEDC', fee: 100 },
+  { id: 'ikedc', service: 'ELECTRICITY', name: 'IKEDC', fee: 100 },
+  { id: 'jedc', service: 'ELECTRICITY', name: 'JEDC', fee: 100 },
+  { id: 'kaedco', service: 'ELECTRICITY', name: 'KAEDCO', fee: 100 },
+  { id: 'kedco', service: 'ELECTRICITY', name: 'KEDCO', fee: 100 },
+  { id: 'phedc', service: 'ELECTRICITY', name: 'PHEDC', fee: 100 },
+  { id: 'yedc', service: 'ELECTRICITY', name: 'YEDC', fee: 100 },
   { id: 'mtn', service: 'AIRTIME', name: 'MTN', fee: 0 },
   { id: 'airtel', service: 'AIRTIME', name: 'Airtel', fee: 0 },
   { id: 'glo', service: 'AIRTIME', name: 'Glo', fee: 0 },
