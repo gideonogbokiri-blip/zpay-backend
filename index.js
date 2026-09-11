@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { load, save, db } = require('./store');
@@ -18,7 +18,7 @@ function createApp() {
   const app = express();
   const allowedOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
-    : ['https://zpay-seven.vercel.app', 'https://zpay-frontend-nine.vercel.app', 'https://zpay.vercel.app', 'https://zpay-frontend.vercel.app', 'https://zarox-new.vercel.app', 'http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://localhost:8081', 'http://localhost:19006'];
+    : ['https://zpay-seven.vercel.app', 'https://zpay-frontend-nine.vercel.app', 'https://zpay.vercel.app', 'https://zpay-frontend.vercel.app', 'https://zarox-new.vercel.app', 'https://zpay-frontend-opal.vercel.app', 'http://localhost:5173', 'http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://localhost:8081', 'http://localhost:19006'];
   const corsOptions = {
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
@@ -91,4 +91,5 @@ if (require.main === module) {
     process.exit(0);
   });
 }
+
 
